@@ -1,0 +1,197 @@
+/* ========== PORTADA ========== */
+.app-cover {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    cursor: pointer;
+    outline: none;
+}
+
+.app-cover:focus-visible {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+.app-cover-inner {
+    text-align: center;
+    max-width: 90vw;
+    width: 100%;
+}
+
+.app-cover-title {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: clamp(28px, 5vw, 48px);
+    margin: 0 0 16px 0;
+}
+
+/* ========== RESULTADOS - PUNTAJE ========== */
+.app-score-title {
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+.app-score-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 72px;
+    font-weight: bold;
+}
+
+.app-score-low {
+    color: #f44336;
+}
+
+.app-score-medium {
+    color: #4caf50;
+}
+
+.app-score-high {
+    color: #000000;
+}
+
+/* ========== RESULTADOS - TABLA ========== */
+.app-results-card {
+    margin-top: 16px;
+}
+
+.app-answers-title {
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+.app-table-wrapper {
+    overflow-x: auto;
+}
+
+.app-results-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #dfe3ea;
+    table-layout: fixed;
+}
+
+.app-results-table thead tr {
+    background: #f9fafb;
+}
+
+.app-results-table th {
+    text-align: center;
+    padding: 8px 10px;
+    border: 1px solid #dfe3ea;
+    background: #f9fafb;
+    font-weight: 600;
+}
+
+.app-results-table td {
+    padding: 8px 10px;
+    border: 1px solid #dfe3ea;
+    text-align: center;
+    font-size: 14px;
+}
+
+.app-results-qnum {
+    font-size: 14px;
+}
+
+.app-results-answer {
+    text-transform: uppercase;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.app-results-answer.correct {
+    background: #e8f5e9;
+}
+
+.app-results-answer.incorrect {
+    background: #ffebee;
+}
+
+.app-results-pager {
+    position: static;
+    background: transparent;
+    border-bottom: 0;
+    padding: 0;
+    margin-top: 16px;
+}
+
+/* ========== QUIZ - PAGER ========== */
+.pager-meta {
+    flex: 1;
+    text-align: center;
+}
+
+/* ========== MODAL NAVEGACIÓN RÁPIDA ========== */
+.app-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+}
+
+.app-modal-card {
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+}
+
+.app-modal-title {
+    margin-bottom: 16px;
+    margin-top: 0;
+}
+
+.app-question-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 8px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+    flex: 1;
+}
+
+.app-question-btn {
+    padding: 10px;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.app-question-btn.active {
+    border: 2px solid #007bff;
+    background: #e7f3ff;
+    font-weight: bold;
+}
+
+.app-question-btn.answered:not(.active) {
+    background: #f0f0f0;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .app-score-display {
+        font-size: 56px;
+    }
+
+    .app-question-grid {
+        grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+    }
+
+    .app-question-btn {
+        font-size: 11px;
+    }
+}
