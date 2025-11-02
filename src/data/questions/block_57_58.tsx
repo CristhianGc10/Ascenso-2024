@@ -39,13 +39,13 @@ const block_57_58: Question[] = [
         },
         explanations: {
             a: {
-                text: 'Es correcta porque las opciones C (De 3 a 6 horas) y B (De 1 a 4 horas) se superponen en el rango de 3 a 4 horas, lo que hace ambigua la respuesta.',
+                text: 'Es incorrecta porque ser pregunta cerrada no es el problema; puede serlo si está bien construida.',
             },
             b: {
-                text: 'Es incorrecta porque la pregunta es clara en su formulación.',
+                text: 'Es incorrecta porque el número de alternativas podría ser válido si los intervalos estuvieran bien definidos.',
             },
             c: {
-                text: 'Es incorrecta porque tener 4 opciones es apropiado para este tipo de pregunta.',
+                text: 'Es correcta porque los intervalos se solapan o están mal organizados (1–4 y 3–6, etc.), imposibilitando clasificar sin ambigüedad y contar correctamente.',
             },
         },
     },
@@ -89,13 +89,13 @@ const block_57_58: Question[] = [
         },
         explanations: {
             a: {
-                text: 'Es incorrecta porque un gráfico de líneas se usa para datos continuos y evolutivos, no para categorías.',
+                text: 'Es incorrecta porque el docente explica qué gráfico usar y hasta impone otro tipo; no ayuda a que los estudiantes evalúen por sí mismos la pertinencia.',
             },
             b: {
-                text: 'Es correcta porque los datos son categorías cualitativas (actividades) no datos numéricos continuos. Un gráfico de barras sería más apropiado.',
+                text: 'Es incorrecta porque el criterio de elección (“el más fácil de elaborar”) es técnico y no responde a pertinencia respecto a la naturaleza de los datos.',
             },
             c: {
-                text: 'Es incorrecta porque la elección del gráfico debe basarse en el tipo de datos, no en la costumbre.',
+                text: 'Es correcta porque muestra ejemplos de gráficos de líneas para que ellos identifiquen cuándo se usan (tendencias/cambios) y pregunta si su gráfico representa adecuadamente lo que quieren mostrar.',
             },
         },
     },
