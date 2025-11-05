@@ -8,11 +8,10 @@ type Props = {
     q: Question;
     stems: StemsMap;
     order: number;
-    selected: OptionKey | null; // estado controlado
-    onSelect: (k: OptionKey) => void; // cambia la selección
+    selected: OptionKey | null;
+    onSelect: (k: OptionKey) => void;
 };
 
-// Separador inline sin CSS global
 function Sep() {
     return (
         <hr
@@ -42,9 +41,9 @@ export default function QuestionCard({
     const hasSharedStem = !!q.stemBlockId;
     const stemNode = hasSharedStem ? stems[q.stemBlockId!] : q.stem;
 
-    // al cambiar de pregunta, ocultar explicación
     React.useEffect(() => {
         setShowExpl(false);
+        setOpenStem(false);
     }, [q.id]);
 
     const onPick = (k: OptionKey) => onSelect(k);
@@ -92,9 +91,9 @@ export default function QuestionCard({
 
                 const statusColor =
                     status === 'Correcto'
-                        ? '#1a7f37' // verde
+                        ? '#1a7f37'
                         : status === 'Incorrecto'
-                        ? '#d1242f' // rojo
+                        ? '#d1242f'
                         : undefined;
 
                 return (
@@ -204,6 +203,9 @@ export default function QuestionCard({
                     content={stemNode as React.ReactNode}
                     isOpen={openStem}
                     onClose={() => setOpenStem(false)}
+                    width="min(900px, 95vw)"
+                    height={880}
+                    maxHeight={880}
                 />
             )}
         </article>

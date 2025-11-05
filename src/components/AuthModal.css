@@ -1,0 +1,43 @@
+/* Solo estilos para el bloque de nombre en AuthModal */
+
+.authmodal-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0;
+}
+.authmodal-divider > .line {
+    flex: 1;
+    height: 1px;
+    background: #d0d7de;
+}
+.authmodal-divider > .dot {
+    font-size: 12px;
+    color: #57606a;
+}
+
+.authmodal-name-block {
+    display: grid;
+    gap: 10px;
+}
+
+.authmodal-actions {
+    display: flex;
+    justify-content: center; /* ← centrado */
+    gap: 8px;
+}
+
+.authmodal-label {
+    display: block;
+}
+
+.authmodal-label .meta {
+    display: block;
+    margin-bottom: 4px;
+    color: #57606a;
+    font-size: 12px;
+}
+
+.authmodal-input {
+    width: 100%;
+}

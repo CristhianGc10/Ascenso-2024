@@ -1,118 +1,84 @@
 import React from 'react';
 
+type Size = number | string;
+
 type Props = {
     title: string;
     content: React.ReactNode;
     isOpen: boolean;
     onClose: () => void;
+    width?: Size;
+    height?: Size;
+    maxWidth?: Size;
+    maxHeight?: Size;
 };
 
-export default function StemWindow({ title, content, isOpen, onClose }: Props) {
-    const [minimized, setMinimized] = React.useState(false);
-    const [maximized, setMaximized] = React.useState(false);
+export default function StemWindow({
+    title,
+    content,
+    isOpen,
+    onClose,
+    width,
+    height,
+    maxWidth,
+    maxHeight,
+}: Props) {
+    React.useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isOpen, onClose]);
 
-    if (!isOpen && !minimized) return null;
+    if (!isOpen) return null;
 
     return (
-        <>
-            {isOpen && !minimized && (
-                <div
-                    className="stem-backdrop"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label={title}
-                >
-                    <div
-                        className={`stem-window ${
-                            maximized ? 'maximized' : ''
-                        }`}
+        <div
+            className="stem-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            onClick={onClose}
+        >
+            <div
+                className="stem-window"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    width: width ?? 'min(800px, 92vw)',
+                    height,
+                    maxWidth,
+                    maxHeight,
+                    display: 'flex',
+                    flexDirection: 'column',
+                }}
+            >
+                <div className="stem-titlebar">
+                    <div className="stem-title">{title}</div>
+                    <button
+                        className="btn btn-ghost btn-icon"
+                        onClick={onClose}
+                        aria-label="Cerrar"
+                        title="Cerrar"
+                        style={{
+                            fontSize: 22,
+                            width: 36,
+                            height: 36,
+                            lineHeight: 1,
+                        }}
                     >
-                        <div className="stem-titlebar">
-                            <div className="stem-title">{title}</div>
-                            <div className="row">
-                                {/* Minimizar — */}
-                                <button
-                                    className="btn btn-ghost btn-icon"
-                                    onClick={() => setMinimized(true)}
-                                    aria-label="Minimizar"
-                                    title="Minimizar"
-                                >
-                                    —
-                                </button>
-                                {/* Maximizar ▢ */}
-                                <button
-                                    className="btn btn-ghost btn-icon"
-                                    onClick={() => setMaximized((v) => !v)}
-                                    aria-label={
-                                        maximized
-                                            ? 'Restaurar tamaño'
-                                            : 'Maximizar'
-                                    }
-                                    title={
-                                        maximized
-                                            ? 'Restaurar tamaño'
-                                            : 'Maximizar'
-                                    }
-                                >
-                                    ▢
-                                </button>
-                                {/* Cerrar ✕ */}
-                                <button
-                                    className="btn btn-ghost btn-icon"
-                                    onClick={onClose}
-                                    aria-label="Cerrar"
-                                    title="Cerrar"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        </div>
-                        <div className="stem-content">{content}</div>
-                    </div>
+                        ✕
+                    </button>
                 </div>
-            )}
 
-            {minimized && (
                 <div
-                    className={`stem-dock ${
-                        minimized ? 'minimized-corner' : ''
-                    }`}
+                    className="stem-content"
+                    style={{ overflow: 'auto', flex: 1, minHeight: 0 }}
                 >
-                    <div
-                        className="stem-dock-item"
-                        role="toolbar"
-                        aria-label={`Enunciado minimizado: ${title}`}
-                    >
-                        {/* Título a la izquierda */}
-                        <span className="meta">{title}</span>
-
-                        {/* A la derecha: ▢ junto a ✕ */}
-                        <button
-                            className="btn btn-ghost btn-icon"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setMinimized(false);
-                            }}
-                            aria-label="Restaurar"
-                            title="Restaurar"
-                        >
-                            ▢
-                        </button>
-                        <button
-                            className="btn btn-ghost btn-icon"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setMinimized(false);
-                                onClose();
-                            }}
-                            aria-label="Cerrar"
-                            title="Cerrar"
-                        >
-                            ✕
-                        </button>
-                    </div>
+                    {content}
                 </div>
-            )}
-        </>
+            </div>
+        </div>
     );
 }
