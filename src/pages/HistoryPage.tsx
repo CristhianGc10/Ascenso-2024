@@ -16,7 +16,7 @@ export default function HistoryPage({
     return (
         <div className="container">
             <div className="card">
-                <h2 className="h1">Historial de intentos</h2>
+                <h2 className="h1">Registro</h2>
                 <div className="app-table-wrapper">
                     <table className="app-results-table">
                         <thead>
