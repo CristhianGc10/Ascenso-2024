@@ -1,8 +1,22 @@
+// src/components/QuestionCard.tsx
+
+import '@xyflow/react/dist/style.css';
+
+import {
+    Background,
+    Controls,
+    MiniMap,
+    ReactFlow,
+    useEdgesState,
+    useNodesState,
+} from '@xyflow/react';
 import type { OptionKey, Question } from '../data/questions';
+import type { Edge as RFEdge, Node as RFNode } from '@xyflow/react';
 
 import React from 'react';
 import StemWindow from './StemWindow';
 import type { StemsMap } from '../data/stems';
+import { getFlow } from '../flows';
 
 type Props = {
     q: Question;
@@ -37,14 +51,38 @@ export default function QuestionCard({
 }: Props) {
     const [openStem, setOpenStem] = React.useState(false);
     const [showExpl, setShowExpl] = React.useState(false);
+    const [openFlow, setOpenFlow] = React.useState(false);
 
     const hasSharedStem = !!q.stemBlockId;
     const stemNode = hasSharedStem ? stems[q.stemBlockId!] : q.stem;
 
+    // flowId por pregunta o por grupo; fallback
+    const flowId: string =
+        (q as any).flowId ??
+        (q.stemBlockId === '1-3'
+            ? 'grp-1-3'
+            : q.stemBlockId === '4-7'
+            ? 'grp-4-7'
+            : 'single-analisis');
+
+    const flowDef = getFlow(flowId);
+    const initialNodes: RFNode[] = flowDef?.nodes ?? [];
+    const initialEdges: RFEdge[] = flowDef?.edges ?? [];
+
+    // IMPORTANTE: el genérico es RFNode/RFEdge, no RFNode[]/RFEdge[]
+    const [flowNodes, setFlowNodes, onFlowNodesChange] =
+        useNodesState<RFNode>(initialNodes);
+    const [flowEdges, setFlowEdges, onFlowEdgesChange] =
+        useEdgesState<RFEdge>(initialEdges);
+
     React.useEffect(() => {
         setShowExpl(false);
         setOpenStem(false);
-    }, [q.id]);
+        setOpenFlow(false);
+        setFlowNodes(initialNodes);
+        setFlowEdges(initialEdges);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [q.id, flowId]);
 
     const onPick = (k: OptionKey) => onSelect(k);
 
@@ -65,12 +103,9 @@ export default function QuestionCard({
             <Sep />
 
             {!hasSharedStem && stemNode && (
-                <>
-                    {/* Solo un separador arriba. Evita duplicados consecutivos. */}
-                    <div style={{ marginTop: 6, textAlign: 'justify' }}>
-                        {stemNode as React.ReactNode}
-                    </div>
-                </>
+                <div style={{ marginTop: 6, textAlign: 'justify' }}>
+                    {stemNode as React.ReactNode}
+                </div>
             )}
 
             <div
@@ -83,8 +118,8 @@ export default function QuestionCard({
 
             {(['a', 'b', 'c'] as OptionKey[]).map((k) => {
                 const status =
-                    typeof q.correct !== 'undefined'
-                        ? k === q.correct
+                    typeof (q as any).correct !== 'undefined'
+                        ? k === (q as any).correct
                             ? 'Correcto'
                             : 'Incorrecto'
                         : null;
@@ -157,13 +192,29 @@ export default function QuestionCard({
                 );
             })}
 
-            <div className="row" style={{ marginTop: 12 }}>
+            <div
+                className="row"
+                style={{
+                    marginTop: 12,
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                }}
+            >
                 <button
                     className="btn btn-ghost"
                     disabled={!selected}
                     onClick={() => setShowExpl((v) => !v)}
                 >
                     {showExpl ? 'Ocultar explicación' : 'Ver explicación'}
+                </button>
+
+                <button
+                    className="btn btn-ghost"
+                    onClick={() => setOpenFlow(true)}
+                    aria-label="Abrir esquema"
+                    title="Abrir esquema"
+                >
+                    Ver esquema
                 </button>
             </div>
 
@@ -208,6 +259,30 @@ export default function QuestionCard({
                     maxHeight={880}
                 />
             )}
+
+            <StemWindow
+                title={flowDef?.title ?? 'Esquema'}
+                content={
+                    <div style={{ width: 'min(900px, 95vw)', height: 520 }}>
+                        <ReactFlow
+                            nodes={flowNodes}
+                            edges={flowEdges}
+                            onNodesChange={onFlowNodesChange}
+                            onEdgesChange={onFlowEdgesChange}
+                            fitView
+                        >
+                            <MiniMap pannable zoomable />
+                            <Controls position="bottom-right" />
+                            <Background />
+                        </ReactFlow>
+                    </div>
+                }
+                isOpen={openFlow}
+                onClose={() => setOpenFlow(false)}
+                width="min(980px, 96vw)"
+                height={600}
+                maxHeight={600}
+            />
         </article>
     );
 }

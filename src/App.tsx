@@ -1,5 +1,5 @@
-// src/App.tsx
 import './App.css';
+import './styles/xy-theme.css';
 
 import {
     finalizeAttempt,
@@ -32,8 +32,7 @@ type AttemptRow = {
     order?: number[] | null;
 };
 
-const TIMER_MS = 100_000; // 1 min 40 s por pregunta (invisible)
-
+const TIMER_MS = 100_000;
 export default function App() {
     const [stage, setStage] = React.useState<Stage>('cover');
     const [session, setSession] = React.useState<Session | null>(null);
@@ -59,22 +58,17 @@ export default function App() {
 
     const [showAuth, setShowAuth] = React.useState(false);
 
-    // Nombre mostrado (solo se muestra si hay sesión)
     const [displayName, setDisplayName] = React.useState<string>('');
 
-    // Cargar sesión y nombre inicial
     React.useEffect(() => {
-        // Al cargar: trae sesión y (opcional) nombre guardado por la app
         (async () => {
             const { data } = await supabase.auth.getSession();
             setSession(data.session ?? null);
 
-            // NO leemos user_metadata de Google; solo tu nombre si lo guardaste tú
             const cached = localStorage.getItem('app.displayName') || '';
             setDisplayName(cached);
         })();
 
-        // Suscríbete a cambios de auth, pero sin borrar el nombre salvo SIGNED_OUT
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, s) => {
@@ -82,35 +76,27 @@ export default function App() {
 
             if (event === 'SIGNED_IN') {
                 setShowAuth(false);
-                // Importante: NO tocar displayName aquí
             }
 
             if (event === 'SIGNED_OUT' || !s) {
-                // Solo al cerrar sesión limpiamos el nombre
                 localStorage.removeItem('app.displayName');
                 setDisplayName('');
             }
-
-            // Para otros eventos (TOKEN_REFRESHED, USER_UPDATED, etc.) no hacemos nada con displayName
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
-    // Guardar/actualizar nombre (local + metadata si hay sesión)
     async function handleSetDisplayName(name: string) {
         setDisplayName(name);
         localStorage.setItem('app.displayName', name);
         if (session) {
             try {
                 await supabase.auth.updateUser({ data: { full_name: name } });
-            } catch {
-                // noop
-            }
+            } catch {}
         }
     }
 
-    // Cerrar sesión
     async function handleSignOut() {
         try {
             await supabase.auth.signOut();
@@ -125,7 +111,6 @@ export default function App() {
         setReadOnly(false);
     }
 
-    // Iniciar examen (gating: requiere sesión + nombre)
     async function handleStartExam() {
         const isSignedIn = !!session;
         const canStart = isSignedIn && !!(displayName && displayName.trim());
@@ -145,7 +130,6 @@ export default function App() {
         setStage('quiz');
     }
 
-    // Seleccionar respuesta
     const onSelect = async (k: OptionKey) => {
         if (readOnly) return;
         const qid = order[idx];
@@ -165,7 +149,6 @@ export default function App() {
         clearTimer();
     };
 
-    // Finalizar examen (guarda conteo de correctas como score)
     async function handleFinishExam() {
         if (stage !== 'quiz') return;
         const duration = startedAt ? Date.now() - startedAt : 0;
@@ -176,14 +159,13 @@ export default function App() {
             if (sel && correctMap[qid] === sel) correctCount++;
         }
 
-        const rawScore = correctCount; // usamos número de correctas como score
+        const rawScore = correctCount;
         if (attemptId) {
             await finalizeAttempt(attemptId, correctCount, duration, rawScore);
         }
         setStage('results');
     }
 
-    // Abrir historial y cargar
     async function openHistory() {
         setStage('history');
     }
@@ -195,7 +177,6 @@ export default function App() {
         })();
     }, [stage]);
 
-    // Abrir intento guardado en modo revisión (readOnly)
     async function openAttempt(id: string) {
         const { attempt, answers: ans } = await loadAttempt(id);
 
@@ -214,7 +195,6 @@ export default function App() {
         setStage('review');
     }
 
-    // Timer invisible por pregunta
     const clearTimer = () => {
         if (timerRef.current !== null) {
             window.clearTimeout(timerRef.current);
@@ -256,9 +236,6 @@ export default function App() {
         return clearTimer;
     }, [stage, idx, order, answers, readOnly, timedOut, total]);
 
-    // --------- RENDERS POR STAGE ---------
-
-    // Portada
     if (stage === 'cover') {
         const isSignedIn = !!session;
         const canStart = isSignedIn && !!(displayName && displayName.trim());
@@ -267,20 +244,19 @@ export default function App() {
             <>
                 <CoverPage
                     isSignedIn={isSignedIn}
-                    displayName={isSignedIn ? displayName || null : null} // no mostrar nombre sin sesión
+                    displayName={isSignedIn ? displayName || null : null}
                     canStart={canStart}
                     onOpenLogin={() => setShowAuth(true)}
                     onSignOut={handleSignOut}
                     onStart={handleStartExam}
                     onOpenHistory={openHistory}
-                    onSetName={handleSetDisplayName} // guarda nombre desde la portada
+                    onSetName={handleSetDisplayName}
                 />
                 <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
             </>
         );
     }
 
-    // Historial
     if (stage === 'history') {
         return (
             <>
@@ -295,7 +271,6 @@ export default function App() {
         );
     }
 
-    // Resultados
     if (stage === 'results') {
         return (
             <>
@@ -317,7 +292,6 @@ export default function App() {
         );
     }
 
-    // Quiz o Review
     return (
         <>
             <QuizPage
