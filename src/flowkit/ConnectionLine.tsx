@@ -1,33 +1,36 @@
-import { useConnection } from '@xyflow/react';
+// src/flowkit/ConnectionLine.tsx
 
-type Props = {
-    fromX: number;
-    fromY: number;
-    toX: number;
-    toY: number;
-};
+import { BaseEdge, getStraightPath } from '@xyflow/react';
 
-export default function ConnectionLine({ fromX, fromY, toX, toY }: Props) {
-    const { fromHandle } = useConnection();
-    const stroke = (fromHandle?.id as string) || '#8888FF'; // color del handle origen
+import type { ConnectionLineComponentProps } from '@xyflow/react';
+import { resolveEdgeHex } from './molds';
+
+export default function ConnectionLine({
+    fromX,
+    fromY,
+    toX,
+    toY,
+    fromHandle,
+    toHandle,
+}: ConnectionLineComponentProps) {
+    const stroke =
+        resolveEdgeHex(
+            (fromHandle?.id as string) || undefined,
+            (toHandle?.id as string) || undefined
+        ) ?? '#D3D3D3';
+
+    const [path] = getStraightPath({
+        sourceX: fromX,
+        sourceY: fromY,
+        targetX: toX,
+        targetY: toY,
+    });
 
     return (
-        <g>
-            <path
-                fill="none"
-                stroke={stroke}
-                strokeWidth={1.5}
-                className="animated"
-                d={`M${fromX},${fromY} C ${fromX} ${toY} ${fromX} ${toY} ${toX},${toY}`}
-            />
-            <circle
-                cx={toX}
-                cy={toY}
-                r={3}
-                fill="#fff"
-                stroke={stroke}
-                strokeWidth={1.5}
-            />
-        </g>
+        <BaseEdge
+            id="asc-connection-preview"
+            path={path}
+            style={{ stroke, strokeWidth: 1.5, strokeDasharray: 6 }}
+        />
     );
 }

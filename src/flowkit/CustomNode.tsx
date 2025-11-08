@@ -1,5 +1,7 @@
+// src/flowkit/CustomNode.tsx
 import React, { memo } from 'react';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
+import { ASC_COLOR_SETS } from './molds';
 
 export type AscNodeData = {
     label?: React.ReactNode;
@@ -15,27 +17,169 @@ export type AscNodeData = {
     shadow?: string;
     topColors?: string[];
     bottomColors?: string[];
+    leftColors?: string[];
+    rightColors?: string[];
+    edgeText?: string;
 };
 
 type AscNode = Node<AscNodeData, 'asc-node'>;
 
+const { INPUT_SET, DEF_A_SET, OUTPUT_SET } = ASC_COLOR_SETS;
+
 const HANDLE = 10;
+const OUT = -14;
 const HS: React.CSSProperties = {
     width: HANDLE,
     height: HANDLE,
     borderRadius: HANDLE / 2,
+    boxShadow: '0 0 0 1px rgba(0,0,0,0.1)',
 };
+const up = (v?: string | null) => (v ?? '').toUpperCase();
 
-function CustomNode({ data, isConnectable }: NodeProps<AscNode>) {
+function targetsTop(
+    colors: string[] | undefined,
+    isConnectable: boolean,
+    nodeId: string,
+    allowFrom: (sHex: string) => boolean
+) {
+    if (!colors?.length) return null;
+    const n = colors.length;
+    return colors.map((c, i) => {
+        const hex = c.toUpperCase();
+        const leftPct = ((i + 1) / (n + 1)) * 100;
+        return (
+            <Handle
+                key={`t-${i}-${hex}`}
+                type="target"
+                id={hex}
+                position={Position.Top}
+                isConnectable={isConnectable}
+                isValidConnection={(conn) =>
+                    conn.source !== nodeId && allowFrom(up(conn.sourceHandle))
+                }
+                style={{
+                    ...HS,
+                    top: OUT,
+                    left: `${leftPct}%`,
+                    transform: 'translateX(-50%)',
+                    background: hex,
+                    borderColor: hex,
+                }}
+            />
+        );
+    });
+}
+function targetsLeft(
+    colors: string[] | undefined,
+    isConnectable: boolean,
+    nodeId: string,
+    allowFrom: (sHex: string) => boolean
+) {
+    if (!colors?.length) return null;
+    const n = colors.length;
+    return colors.map((c, i) => {
+        const hex = c.toUpperCase();
+        const topPct = ((i + 1) / (n + 1)) * 100;
+        return (
+            <Handle
+                key={`l-${i}-${hex}`}
+                type="target"
+                id={hex}
+                position={Position.Left}
+                isConnectable={isConnectable}
+                isValidConnection={(conn) =>
+                    conn.source !== nodeId && allowFrom(up(conn.sourceHandle))
+                }
+                style={{
+                    ...HS,
+                    left: OUT,
+                    top: `${topPct}%`,
+                    transform: 'translateY(-50%)',
+                    background: hex,
+                    borderColor: hex,
+                }}
+            />
+        );
+    });
+}
+function sourcesBottom(
+    colors: string[] | undefined,
+    isConnectable: boolean,
+    nodeId: string,
+    allowTo: (tHex: string) => boolean
+) {
+    if (!colors?.length) return null;
+    const n = colors.length;
+    return colors.map((c, i) => {
+        const hex = c.toUpperCase();
+        const leftPct = ((i + 1) / (n + 1)) * 100;
+        return (
+            <Handle
+                key={`b-${i}-${hex}`}
+                type="source"
+                id={hex}
+                position={Position.Bottom}
+                isConnectable={isConnectable}
+                isValidConnection={(conn) =>
+                    conn.target !== nodeId && allowTo(up(conn.targetHandle))
+                }
+                style={{
+                    ...HS,
+                    bottom: OUT,
+                    left: `${leftPct}%`,
+                    transform: 'translateX(-50%)',
+                    background: hex,
+                    borderColor: hex,
+                }}
+            />
+        );
+    });
+}
+function sourcesRight(
+    colors: string[] | undefined,
+    isConnectable: boolean,
+    nodeId: string,
+    allowTo: (tHex: string) => boolean
+) {
+    if (!colors?.length) return null;
+    const n = colors.length;
+    return colors.map((c, i) => {
+        const hex = c.toUpperCase();
+        const topPct = ((i + 1) / (n + 1)) * 100;
+        return (
+            <Handle
+                key={`r-${i}-${hex}`}
+                type="source"
+                id={hex}
+                position={Position.Right}
+                isConnectable={isConnectable}
+                isValidConnection={(conn) =>
+                    conn.target !== nodeId && allowTo(up(conn.targetHandle))
+                }
+                style={{
+                    ...HS,
+                    right: OUT,
+                    top: `${topPct}%`,
+                    transform: 'translateY(-50%)',
+                    background: hex,
+                    borderColor: hex,
+                }}
+            />
+        );
+    });
+}
+
+export default memo(function CustomNode({
+    id,
+    data,
+    isConnectable,
+}: NodeProps<AscNode>) {
     const pad = data?.padding ?? '1rem';
     const radius = data?.radius ?? 10;
     const border = `${data?.borderWidth ?? 1}px solid ${
         data?.borderColor ?? '#e5e7eb'
     }`;
     const shadow = data?.shadow ?? 'var(--xy-node-boxshadow-default)';
-
-    const top = data?.topColors ?? ['#22c55e', '#a855f7', '#14b8a6'];
-    const bottom = data?.bottomColors ?? ['#ef4444', '#3b82f6', '#f59e0b'];
 
     return (
         <div
@@ -52,7 +196,6 @@ function CustomNode({ data, isConnectable }: NodeProps<AscNode>) {
                 display: 'block',
             }}
         >
-            {/* Contenido: centra texto, pero permite a imágenes ocupar todo */}
             <div
                 className="asc-node__content"
                 style={{
@@ -65,41 +208,21 @@ function CustomNode({ data, isConnectable }: NodeProps<AscNode>) {
                 {data?.content ?? data?.label ?? 'Node'}
             </div>
 
-            {/* TARGETS arriba, fuera (-8px) */}
-            {top.map((c, i) => (
-                <Handle
-                    key={`t${i}`}
-                    type="target"
-                    id={`t-${i}`}
-                    position={Position.Top}
-                    style={{
-                        ...HS,
-                        top: -8,
-                        left: `${20 + i * 30}%`,
-                        background: c,
-                    }}
-                    isConnectable={isConnectable}
-                />
-            ))}
-
-            {/* SOURCES abajo, fuera (-8px). id=color para heredar en edges */}
-            {bottom.map((c, i) => (
-                <Handle
-                    key={`s${i}`}
-                    type="source"
-                    id={c}
-                    position={Position.Bottom}
-                    style={{
-                        ...HS,
-                        bottom: -8,
-                        left: `${15 + i * 35}%`,
-                        background: c,
-                    }}
-                    isConnectable={isConnectable}
-                />
-            ))}
+            {targetsTop(data?.topColors, isConnectable, id, (s) =>
+                INPUT_SET.has(s)
+            )}
+            {sourcesBottom(
+                data?.bottomColors,
+                isConnectable,
+                id,
+                (t) => DEF_A_SET.has(t) || OUTPUT_SET.has(t)
+            )}
+            {targetsLeft(data?.leftColors, isConnectable, id, (s) =>
+                INPUT_SET.has(s)
+            )}
+            {sourcesRight(data?.rightColors, isConnectable, id, (t) =>
+                OUTPUT_SET.has(t)
+            )}
         </div>
     );
-}
-
-export default memo(CustomNode);
+});

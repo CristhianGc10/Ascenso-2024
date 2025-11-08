@@ -1,50 +1,46 @@
+// src/components/FlowModal.tsx
 import React from 'react';
+import {
+    ReactFlow,
+    useNodesState,
+    useEdgesState,
+    type Node as RFNode,
+    type Edge as RFEdge,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import {
     nodeTypes,
     defaultEdgeOptions,
     connectionLineComponent,
 } from '../flowkit';
-
 import {
-    ReactFlow,
-    useNodesState,
-    useEdgesState,
-    type Node,
-    type Edge,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+    makeInputNode,
+    makeDefaultNode,
+    makeOutputNode,
+    makeOnConnectWithColor,
+} from '../flowkit/molds';
+
+type EdgeKind = 'smoothstep' | 'bezier' | 'step' | 'straight';
 
 type Props = {
     open: boolean;
     onClose: () => void;
     title?: string;
-    nodes?: Node[];
-    edges?: Edge[];
+    nodes?: RFNode[];
+    edges?: RFEdge[];
 };
 
-const defaultNodes: Node[] = [
-    {
-        id: 'c',
-        position: { x: 0, y: 0 },
-        data: { label: 'Concepto' },
-        type: 'input',
-    },
-    { id: 'a', position: { x: -150, y: 120 }, data: { label: 'Parte A' } },
-    { id: 'b', position: { x: 150, y: 120 }, data: { label: 'Parte B' } },
-    {
-        id: 'res',
-        position: { x: 0, y: 240 },
-        data: { label: 'Resultado' },
-        type: 'output',
-    },
+const defaultNodes: RFNode[] = [
+    makeInputNode(
+        'in',
+        { x: 0, y: 0 },
+        { content: 'Idea A', edgeLabel: 'conduce a' }
+    ),
+    makeDefaultNode('mid', { x: 420, y: 80 }, { label: 'Idea B' }),
+    makeOutputNode('out', { x: 860, y: 0 }, { label: 'Idea C' }),
 ];
 
-const defaultEdges: Edge[] = [
-    { id: 'e1', source: 'c', target: 'a' },
-    { id: 'e2', source: 'c', target: 'b' },
-    { id: 'e3', source: 'a', target: 'res' },
-    { id: 'e4', source: 'b', target: 'res' },
-];
+const defaultEdges: RFEdge[] = [];
 
 export default function FlowModal({
     open,
@@ -53,8 +49,24 @@ export default function FlowModal({
     nodes = defaultNodes,
     edges = defaultEdges,
 }: Props) {
-    const [nf, , onN] = useNodesState(nodes);
-    const [ef, , onE] = useEdgesState(edges);
+    const [nf, , onN] = useNodesState<RFNode>(nodes);
+    const [ef, setE, onE] = useEdgesState<RFEdge>(edges);
+    const [edgeType, setType] = React.useState<EdgeKind>('smoothstep');
+
+    // usa solo data.edgeLabel del nodo source
+    const getNodeLabel = React.useCallback(
+        (id: string) => {
+            const n = nf.find((x) => x.id === id);
+            const d = n?.data as any;
+            return typeof d?.edgeLabel === 'string' ? d.edgeLabel : undefined;
+        },
+        [nf]
+    );
+
+    const onConnect = React.useMemo(
+        () => makeOnConnectWithColor(edgeType, getNodeLabel)(setE),
+        [edgeType, setE, getNodeLabel]
+    );
 
     React.useEffect(() => {
         if (!open) return;
@@ -64,6 +76,17 @@ export default function FlowModal({
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, [open, onClose]);
+
+    // reetiquetar si cambian edgeLabel en nodos
+    React.useEffect(() => {
+        setE((prev) =>
+            prev.map((e) => {
+                const newLabel =
+                    (getNodeLabel(e.source) || '').trim() || undefined;
+                return newLabel !== e.label ? { ...e, label: newLabel } : e;
+            })
+        );
+    }, [nf, setE, getNodeLabel]);
 
     if (!open) return null;
 
@@ -100,6 +123,7 @@ export default function FlowModal({
                     style={{
                         display: 'flex',
                         alignItems: 'center',
+                        gap: 8,
                         justifyContent: 'space-between',
                         padding: '12px 16px',
                         borderBottom: '1px solid #e5e7eb',
@@ -108,6 +132,30 @@ export default function FlowModal({
                     <h2 id="flow-title" style={{ margin: 0, fontSize: 16 }}>
                         {title}
                     </h2>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        {(
+                            [
+                                'smoothstep',
+                                'bezier',
+                                'step',
+                                'straight',
+                            ] as EdgeKind[]
+                        ).map((t) => (
+                            <button
+                                key={t}
+                                onClick={() => setType(t)}
+                                style={{
+                                    padding: '6px 10px',
+                                    borderRadius: 8,
+                                    border: '1px solid #e5e7eb',
+                                    background:
+                                        edgeType === t ? '#e5f0ff' : '#fff',
+                                }}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                    </div>
                     <button
                         onClick={onClose}
                         aria-label="Cerrar"
@@ -129,11 +177,12 @@ export default function FlowModal({
                         edges={ef}
                         onNodesChange={onN}
                         onEdgesChange={onE}
+                        onConnect={onConnect}
                         nodeTypes={nodeTypes}
                         defaultEdgeOptions={defaultEdgeOptions}
                         connectionLineComponent={connectionLineComponent}
                         fitView
-                    ></ReactFlow>
+                    />
                 </div>
             </div>
         </div>
