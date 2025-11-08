@@ -2,16 +2,14 @@
 
 import '@xyflow/react/dist/style.css';
 
-import {
-    Background,
-    Controls,
-    MiniMap,
-    ReactFlow,
-    useEdgesState,
-    useNodesState,
-} from '@xyflow/react';
 import type { OptionKey, Question } from '../data/questions';
 import type { Edge as RFEdge, Node as RFNode } from '@xyflow/react';
+import { ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
+import {
+    connectionLineComponent,
+    defaultEdgeOptions,
+    nodeTypes,
+} from '../flowkit';
 
 import React from 'react';
 import StemWindow from './StemWindow';
@@ -269,12 +267,11 @@ export default function QuestionCard({
                             edges={flowEdges}
                             onNodesChange={onFlowNodesChange}
                             onEdgesChange={onFlowEdgesChange}
+                            nodeTypes={nodeTypes}
+                            defaultEdgeOptions={defaultEdgeOptions}
+                            connectionLineComponent={connectionLineComponent}
                             fitView
-                        >
-                            <MiniMap pannable zoomable />
-                            <Controls position="bottom-right" />
-                            <Background />
-                        </ReactFlow>
+                        ></ReactFlow>
                     </div>
                 }
                 isOpen={openFlow}

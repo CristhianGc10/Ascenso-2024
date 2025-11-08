@@ -1,9 +1,12 @@
 import React from 'react';
 import {
+    nodeTypes,
+    defaultEdgeOptions,
+    connectionLineComponent,
+} from '../flowkit';
+
+import {
     ReactFlow,
-    Background,
-    Controls,
-    MiniMap,
     useNodesState,
     useEdgesState,
     type Node,
@@ -126,12 +129,11 @@ export default function FlowModal({
                         edges={ef}
                         onNodesChange={onN}
                         onEdgesChange={onE}
+                        nodeTypes={nodeTypes}
+                        defaultEdgeOptions={defaultEdgeOptions}
+                        connectionLineComponent={connectionLineComponent}
                         fitView
-                    >
-                        <MiniMap pannable zoomable />
-                        <Controls position="bottom-right" />
-                        <Background />
-                    </ReactFlow>
+                    ></ReactFlow>
                 </div>
             </div>
         </div>
