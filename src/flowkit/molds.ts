@@ -1,4 +1,3 @@
-// src/flowkit/molds.ts
 import {
     addEdge,
     MarkerType,
@@ -10,7 +9,6 @@ import type { AscData } from './AscNodes';
 
 type Pos = { x: number; y: number };
 
-/* Paleta fija (tu actualización) */
 const INPUT_COLORS = ['#FF0000', '#0000FF', '#00FF00'] as const;
 const DEF_TARGETS = [
     '#FF00FF',
@@ -26,9 +24,8 @@ const DEF_SOURCES = [
     '#0080FF',
     '#FF0040',
 ] as const;
-const OUTPUT_COLORS = ['#FF4400', '#00FFFF', '#FF00AA'] as const;
+const OUTPUT_COLORS = ['#FF6A00', '#00B894', '#6C5CE7'] as const;
 
-/* LUT actualizada (39) */
 const PAIR_LUT: Record<string, string> = {
     '#FF0000|#FF00FF': '#FF0080',
     '#FF0000|#FFFF00': '#FF7F00',
@@ -67,20 +64,31 @@ const PAIR_LUT: Record<string, string> = {
     '#FF00AA|#0080FF': '#7F4095',
     '#FF00AA|#FF0040': '#FF0075',
 };
-// bidireccional
 for (const k of Object.keys(PAIR_LUT)) {
     const [a, b] = k.split('|');
     const rk = `${b}|${a}`;
     if (!(rk in PAIR_LUT) && rk !== k) PAIR_LUT[rk] = PAIR_LUT[k];
 }
 
-/* Conjuntos para validación */
 const INPUT_SET = new Set<string>(INPUT_COLORS as readonly string[]);
 const OUTPUT_SET = new Set<string>(OUTPUT_COLORS as readonly string[]);
-const DEF_A_SET = new Set<string>(DEF_TARGETS as readonly string[]); // targets Default (arriba+izq)
-const DEF_B_SET = new Set<string>(DEF_SOURCES as readonly string[]); // sources Default (abajo+der)
+const DEF_A_SET = new Set<string>(DEF_TARGETS as readonly string[]);
+const DEF_B_SET = new Set<string>(DEF_SOURCES as readonly string[]);
 
-/* Color del edge desde los ids HEX */
+function mixHex(a: string, b: string): string {
+    const to = (s: string) => {
+        const n = parseInt(s.replace('#', ''), 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255] as const;
+    };
+    const [ar, ag, ab] = to(a);
+    const [br, bg, bb] = to(b);
+    const r = Math.round((ar + br) / 2);
+    const g = Math.round((ag + bg) / 2);
+    const c = Math.round((ab + bb) / 2);
+    const hx = (n: number) => n.toString(16).padStart(2, '0').toUpperCase();
+    return `#${hx(r)}${hx(g)}${hx(c)}`;
+}
+
 export function resolveEdgeHex(
     sourceHex?: string | null,
     targetHex?: string | null
@@ -88,10 +96,9 @@ export function resolveEdgeHex(
     if (!sourceHex || !targetHex) return null;
     const S = sourceHex.toUpperCase();
     const T = targetHex.toUpperCase();
-    return PAIR_LUT[`${S}|${T}`] ?? null;
+    return PAIR_LUT[`${S}|${T}`] ?? mixHex(S, T);
 }
 
-/* Factorías de nodos: aceptan data parcial y se combinan con lo necesario */
 export function makeInputNode(
     id: string,
     position: Pos,
@@ -101,9 +108,14 @@ export function makeInputNode(
         id,
         type: 'asc-input',
         position,
-        data: { padding: '1rem', bottomColors: [...INPUT_COLORS], ...data },
+        data: {
+            padding: '1rem',
+            bottomColors: [DEF_TARGETS[0], DEF_TARGETS[1], DEF_TARGETS[2]],
+            ...data,
+        },
     };
 }
+
 export function makeDefaultNode(
     id: string,
     position: Pos,
@@ -117,12 +129,17 @@ export function makeDefaultNode(
             padding: '1rem',
             topColors: [DEF_TARGETS[0], DEF_TARGETS[1], DEF_TARGETS[2]],
             leftColors: [DEF_TARGETS[3], DEF_TARGETS[4]],
-            bottomColors: [DEF_SOURCES[0], DEF_SOURCES[1], DEF_SOURCES[2]],
+            bottomColors: [
+                OUTPUT_COLORS[0],
+                OUTPUT_COLORS[1],
+                OUTPUT_COLORS[2],
+            ],
             rightColors: [DEF_SOURCES[3], DEF_SOURCES[4]],
             ...data,
         },
     };
 }
+
 export function makeOutputNode(
     id: string,
     position: Pos,
@@ -132,25 +149,65 @@ export function makeOutputNode(
         id,
         type: 'asc-output',
         position,
-        data: { padding: '1rem', topColors: [...OUTPUT_COLORS], ...data },
+        data: {
+            padding: '1rem',
+            topColors: [...OUTPUT_COLORS],
+            ...data,
+        },
     };
 }
 
-/* onConnect con color LUT y label = data.edgeLabel del source */
-export type EdgeLabelProvider = (id: string) => string | undefined;
+export function paintSolid(node: RFNode<AscData>, color: string) {
+    node.data = {
+        ...(node.data as AscData),
+        tint: color,
+        contentBg: undefined,
+        borderWidth: 0,
+        shadow: 'none',
+    };
+    return node;
+}
 
-export function makeOnConnectWithColor(
+export function compileEdgeLabels(
+    d: AscData | undefined
+): Record<string, string> {
+    const m: Record<string, string> = d?.edgeLabels ? { ...d.edgeLabels } : {};
+    if (!d?.edgeLabelSides) return m;
+    const up = (s?: string | null) => (s ?? '').toUpperCase();
+    const assign = (colors?: string[], labels?: (string | undefined)[]) => {
+        if (!colors || !labels) return;
+        const n = Math.min(colors.length, labels.length);
+        for (let i = 0; i < n; i++) {
+            const lab = labels[i];
+            if (typeof lab === 'string' && lab.trim())
+                m[up(colors[i])] = lab.trim();
+        }
+    };
+    assign(d.topColors, d.edgeLabelSides.top);
+    assign(d.bottomColors, d.edgeLabelSides.bottom);
+    assign(d.leftColors, d.edgeLabelSides.left);
+    assign(d.rightColors, d.edgeLabelSides.right);
+    return m;
+}
+
+export type EdgeLabelProviderByNode = (id: string) => AscData | undefined;
+
+export function makeOnConnectWithColorSmart(
     edgeType: RFEdge['type'],
-    getNodeLabel: EdgeLabelProvider
+    getNodeData: EdgeLabelProviderByNode
 ) {
+    const U = (s?: string | null) => (s ?? '').toUpperCase();
     return (setEdges: (updater: (eds: RFEdge[]) => RFEdge[]) => void) =>
         (conn: Connection) => {
+            if (!conn.source || !conn.target) return;
+            if (conn.source === conn.target) return;
             const S = (conn.sourceHandle as string) ?? '';
             const T = (conn.targetHandle as string) ?? '';
-            const stroke = resolveEdgeHex(S, T) ?? '#FF00FF';
+            const stroke = resolveEdgeHex(S, T) ?? '#8884D8';
+            const data = getNodeData(String(conn.source));
+            const byHandle = compileEdgeLabels(data);
             const label =
-                (getNodeLabel(String(conn.source)) || '').trim() || undefined;
-
+                (byHandle[U(S)] || data?.edgeLabel || '').trim() || undefined;
             setEdges((eds) =>
                 addEdge(
                     {
@@ -171,5 +228,4 @@ export function makeOnConnectWithColor(
         };
 }
 
-/* Sets exportados para validación en nodos */
 export const ASC_COLOR_SETS = { INPUT_SET, DEF_A_SET, DEF_B_SET, OUTPUT_SET };

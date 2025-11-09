@@ -2,11 +2,11 @@ import React, { memo } from 'react';
 import {
     Handle,
     Position,
-    NodeResizer,
     type Node,
     type NodeProps,
+    useUpdateNodeInternals,
+    useStore,
 } from '@xyflow/react';
-import { ASC_COLOR_SETS } from './molds';
 
 export type AscData = {
     label?: React.ReactNode;
@@ -33,13 +33,18 @@ export type AscData = {
     leftColors?: string[];
     rightColors?: string[];
     edgeLabel?: string;
+    edgeLabels?: Record<string, string>;
+    edgeLabelSides?: Partial<{
+        top: (string | undefined)[];
+        bottom: (string | undefined)[];
+        left: (string | undefined)[];
+        right: (string | undefined)[];
+    }>;
 };
 
 type AscInputNodeT = Node<AscData, 'asc-input'>;
 type AscDefaultNodeT = Node<AscData, 'asc-default'>;
 type AscOutputNodeT = Node<AscData, 'asc-output'>;
-
-const { INPUT_SET, DEF_A_SET, DEF_B_SET, OUTPUT_SET } = ASC_COLOR_SETS;
 
 const HANDLE = 10;
 const OUT = -14;
@@ -50,7 +55,24 @@ const HS: React.CSSProperties = {
     boxShadow: '0 0 0 1px rgba(0,0,0,0.1)',
     zIndex: 2,
 };
-const up = (v?: string | null) => (v ?? '').toUpperCase();
+
+function useTallGuard<T extends HTMLElement>(
+    id: string,
+    ref: React.MutableRefObject<T | null>
+) {
+    const updateNodeInternals = useUpdateNodeInternals();
+    React.useLayoutEffect(() => {
+        if (!ref.current) return;
+        const el = ref.current;
+        const ro = new ResizeObserver(([entry]) => {
+            const { width, height } = entry.contentRect;
+            if (width > height) el.style.minHeight = `${Math.ceil(width)}px`;
+            requestAnimationFrame(() => updateNodeInternals(id));
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [id, updateNodeInternals, ref]);
+}
 
 function Box({ data, children }: { data: AscData; children: React.ReactNode }) {
     const pad = data?.padding ?? '1rem';
@@ -66,7 +88,6 @@ function Box({ data, children }: { data: AscData; children: React.ReactNode }) {
     const ff = data?.fontFamily;
     const ta = data?.textAlign ?? (data?.justify ? 'justify' : 'left');
     const tc = data?.textColor ?? '#111827';
-
     return (
         <div
             style={{
@@ -102,6 +123,9 @@ function Box({ data, children }: { data: AscData; children: React.ReactNode }) {
                     fontWeight: fw as any,
                     fontFamily: ff,
                     color: tc,
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
                 }}
             >
                 {data?.content ?? data?.label ?? 'Node'}
@@ -111,16 +135,49 @@ function Box({ data, children }: { data: AscData; children: React.ReactNode }) {
     );
 }
 
+const validateConn = (c: any) => {
+    const s = String(c?.source ?? '');
+    const t = String(c?.target ?? '');
+    if (!s || !t) return true;
+    return s !== t;
+};
+
+function up(x?: string | null) {
+    return (x ?? '').toString().toUpperCase();
+}
+
+function useUsedHandlesForNode(nodeId: string) {
+    const edges = useStore((s) => s.edges);
+    return React.useMemo(() => {
+        const used = new Set<string>();
+        for (const e of edges) {
+            if (e.source === nodeId && e.sourceHandle)
+                used.add(up(e.sourceHandle));
+            if (e.target === nodeId && e.targetHandle)
+                used.add(up(e.targetHandle));
+        }
+        return used;
+    }, [edges, nodeId]);
+}
+
+function useLockedFromStore() {
+    const interactive = useStore(
+        (s) => s.nodesDraggable && s.nodesConnectable && s.elementsSelectable
+    );
+    return !interactive;
+}
+
 function TopTargets(
     colors: string[] | undefined,
     isConnectable: boolean,
-    nodeId: string,
-    allowFrom: (sHex: string) => boolean
+    used: Set<string>,
+    hideUnused: boolean
 ) {
     if (!colors?.length) return null;
     const n = colors.length;
     return colors.map((c, i) => {
-        const hex = c.toUpperCase();
+        const hex = up(c);
+        if (hideUnused && !used.has(hex)) return null;
         const leftPct = ((i + 1) / (n + 1)) * 100;
         return (
             <Handle
@@ -129,9 +186,7 @@ function TopTargets(
                 id={hex}
                 position={Position.Top}
                 isConnectable={isConnectable}
-                isValidConnection={(conn) =>
-                    conn.source !== nodeId && allowFrom(up(conn.sourceHandle))
-                }
+                isValidConnection={validateConn}
                 style={{
                     ...HS,
                     top: OUT,
@@ -148,13 +203,14 @@ function TopTargets(
 function BottomSources(
     colors: string[] | undefined,
     isConnectable: boolean,
-    nodeId: string,
-    allowTo: (tHex: string) => boolean
+    used: Set<string>,
+    hideUnused: boolean
 ) {
     if (!colors?.length) return null;
     const n = colors.length;
     return colors.map((c, i) => {
-        const hex = c.toUpperCase();
+        const hex = up(c);
+        if (hideUnused && !used.has(hex)) return null;
         const leftPct = ((i + 1) / (n + 1)) * 100;
         return (
             <Handle
@@ -163,9 +219,7 @@ function BottomSources(
                 id={hex}
                 position={Position.Bottom}
                 isConnectable={isConnectable}
-                isValidConnection={(conn) =>
-                    conn.target !== nodeId && allowTo(up(conn.targetHandle))
-                }
+                isValidConnection={validateConn}
                 style={{
                     ...HS,
                     bottom: OUT,
@@ -182,13 +236,14 @@ function BottomSources(
 function LeftTargets(
     colors: string[] | undefined,
     isConnectable: boolean,
-    nodeId: string,
-    allowFrom: (sHex: string) => boolean
+    used: Set<string>,
+    hideUnused: boolean
 ) {
     if (!colors?.length) return null;
     const n = colors.length;
     return colors.map((c, i) => {
-        const hex = c.toUpperCase();
+        const hex = up(c);
+        if (hideUnused && !used.has(hex)) return null;
         const topPct = ((i + 1) / (n + 1)) * 100;
         return (
             <Handle
@@ -197,9 +252,7 @@ function LeftTargets(
                 id={hex}
                 position={Position.Left}
                 isConnectable={isConnectable}
-                isValidConnection={(conn) =>
-                    conn.source !== nodeId && allowFrom(up(conn.sourceHandle))
-                }
+                isValidConnection={validateConn}
                 style={{
                     ...HS,
                     left: OUT,
@@ -216,13 +269,14 @@ function LeftTargets(
 function RightSources(
     colors: string[] | undefined,
     isConnectable: boolean,
-    nodeId: string,
-    allowTo: (tHex: string) => boolean
+    used: Set<string>,
+    hideUnused: boolean
 ) {
     if (!colors?.length) return null;
     const n = colors.length;
     return colors.map((c, i) => {
-        const hex = c.toUpperCase();
+        const hex = up(c);
+        if (hideUnused && !used.has(hex)) return null;
         const topPct = ((i + 1) / (n + 1)) * 100;
         return (
             <Handle
@@ -231,9 +285,7 @@ function RightSources(
                 id={hex}
                 position={Position.Right}
                 isConnectable={isConnectable}
-                isValidConnection={(conn) =>
-                    conn.target !== nodeId && allowTo(up(conn.targetHandle))
-                }
+                isValidConnection={validateConn}
                 style={{
                     ...HS,
                     right: OUT,
@@ -251,26 +303,23 @@ export const AscInputNode = memo(function AscInputNode({
     id,
     data,
     isConnectable,
-    selected,
 }: NodeProps<AscInputNodeT>) {
+    const ref = React.useRef<HTMLDivElement>(null);
+    useTallGuard(id, ref);
+    const used = useUsedHandlesForNode(id);
+    const locked = useLockedFromStore();
+    const hideUnused = locked;
     return (
-        <Box data={data}>
-            <NodeResizer
-                isVisible={!!selected}
-                minWidth={120}
-                minHeight={60}
-                color="#0ea5e9"
-                handleStyle={{ width: 8, height: 8 }}
-                lineStyle={{ strokeWidth: 1 }}
-                keepAspectRatio={false}
-            />
-            {BottomSources(
-                data.bottomColors,
-                isConnectable,
-                id,
-                (t) => DEF_A_SET.has(t) || OUTPUT_SET.has(t)
-            )}
-        </Box>
+        <div ref={ref} style={{ display: 'inline-block' }}>
+            <Box data={data}>
+                {BottomSources(
+                    data.bottomColors,
+                    isConnectable,
+                    used,
+                    hideUnused
+                )}
+            </Box>
+        </div>
     );
 });
 
@@ -278,32 +327,31 @@ export const AscDefaultNode = memo(function AscDefaultNode({
     id,
     data,
     isConnectable,
-    selected,
 }: NodeProps<AscDefaultNodeT>) {
+    const ref = React.useRef<HTMLDivElement>(null);
+    useTallGuard(id, ref);
+    const used = useUsedHandlesForNode(id);
+    const locked = useLockedFromStore();
+    const hideUnused = locked;
     return (
-        <Box data={data}>
-            <NodeResizer
-                isVisible={!!selected}
-                minWidth={160}
-                minHeight={80}
-                color="#0ea5e9"
-                handleStyle={{ width: 8, height: 8 }}
-                lineStyle={{ strokeWidth: 1 }}
-                keepAspectRatio={false}
-            />
-            {TopTargets(data.topColors, isConnectable, id, (s) =>
-                INPUT_SET.has(s)
-            )}
-            {BottomSources(data.bottomColors, isConnectable, id, (t) =>
-                OUTPUT_SET.has(t)
-            )}
-            {LeftTargets(data.leftColors, isConnectable, id, (s) =>
-                INPUT_SET.has(s)
-            )}
-            {RightSources(data.rightColors, isConnectable, id, (t) =>
-                OUTPUT_SET.has(t)
-            )}
-        </Box>
+        <div ref={ref} style={{ display: 'inline-block' }}>
+            <Box data={data}>
+                {TopTargets(data.topColors, isConnectable, used, hideUnused)}
+                {BottomSources(
+                    data.bottomColors,
+                    isConnectable,
+                    used,
+                    hideUnused
+                )}
+                {LeftTargets(data.leftColors, isConnectable, used, hideUnused)}
+                {RightSources(
+                    data.rightColors,
+                    isConnectable,
+                    used,
+                    hideUnused
+                )}
+            </Box>
+        </div>
     );
 });
 
@@ -311,22 +359,17 @@ export const AscOutputNode = memo(function AscOutputNode({
     id,
     data,
     isConnectable,
-    selected,
 }: NodeProps<AscOutputNodeT>) {
+    const ref = React.useRef<HTMLDivElement>(null);
+    useTallGuard(id, ref);
+    const used = useUsedHandlesForNode(id);
+    const locked = useLockedFromStore();
+    const hideUnused = locked;
     return (
-        <Box data={data}>
-            <NodeResizer
-                isVisible={!!selected}
-                minWidth={120}
-                minHeight={60}
-                color="#cfd6d9ff"
-                handleStyle={{ width: 8, height: 8 }}
-                lineStyle={{ strokeWidth: 1 }}
-                keepAspectRatio={false}
-            />
-            {TopTargets(data.topColors, isConnectable, id, (s) =>
-                DEF_B_SET.has(s)
-            )}
-        </Box>
+        <div ref={ref} style={{ display: 'inline-block' }}>
+            <Box data={data}>
+                {TopTargets(data.topColors, isConnectable, used, hideUnused)}
+            </Box>
+        </div>
     );
 });
