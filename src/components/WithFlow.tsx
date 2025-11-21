@@ -2,12 +2,13 @@
 
 import type { Edge, Node } from '@xyflow/react';
 
+import type { FlowId } from '../data/flows';
 import FlowModal from './FlowModal';
 import React from 'react';
 
 type Props = {
     children: React.ReactNode;
-    flowTitle?: string;
+    flowId: FlowId | null; // ✅ Cambiar de flowTitle a flowId
     nodes?: Node[];
     edges?: Edge[];
     buttonLabel?: string;
@@ -15,9 +16,7 @@ type Props = {
 
 export default function WithFlow({
     children,
-    flowTitle = 'Esquema',
-    nodes,
-    edges,
+    flowId, // ✅ Cambiar
     buttonLabel = 'Esquema',
 }: Props) {
     const [open, setOpen] = React.useState(false);
@@ -49,9 +48,7 @@ export default function WithFlow({
             <FlowModal
                 open={open}
                 onClose={() => setOpen(false)}
-                title={flowTitle}
-                nodes={nodes}
-                edges={edges}
+                flowId={flowId} // ✅ Pasar flowId
             />
         </>
     );
