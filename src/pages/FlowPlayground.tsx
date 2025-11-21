@@ -1,184 +1,209 @@
-import '@xyflow/react/dist/style.css';
+// src/pages/FlowPlayground.tsx
 import React from 'react';
 import {
+    ReactFlow,
+    useNodesState,
+    useEdgesState,
+    type Node as RFNode,
+    type Edge as RFEdge,
     Background,
     Controls,
-    ReactFlow,
-    useEdgesState,
-    useNodesState,
-    type Edge as RFEdge,
-    type Node as RFNode,
+    Panel,
     useStore,
 } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
-import type { AscData } from '../flowkit/AscNodes';
-import { DEMO_EDGES, DEMO_NODES } from '../flowkit/presets';
 import {
-    connectionLineComponent,
-    defaultEdgeOptions,
     nodeTypes,
-    edgeTypes,
+    defaultEdgeOptions,
+    connectionLineComponent,
 } from '../flowkit';
-import {
-    makeOnConnectWithColorSmart,
-    compileEdgeLabels,
-} from '../flowkit/molds';
 
-type Box = { l: number; t: number; r: number; b: number };
-function nodeRect(n: any): Box {
-    const w =
-        (n.measured?.width as number) ??
-        (typeof n.style?.width === 'number' ? n.style.width : 160);
-    const h =
-        (n.measured?.height as number) ??
-        (typeof n.style?.height === 'number' ? n.style.height : 100);
-    const x = n.position.x;
-    const y = n.position.y;
-    return { l: x, t: y, r: x + w, b: y + h };
-}
+import { FLOW_SCHEMAS } from '../data/flows';
+import type { FlowId, FlowSchema } from '../data/flows';
+import type { AscData } from '../flowkit/AscNodes';
+import { makeOnConnectWithColorSmart } from '../flowkit/molds';
 
 type EdgeKind = 'smoothstep' | 'bezier' | 'step' | 'straight';
-const TYPES: EdgeKind[] = ['smoothstep', 'bezier', 'step', 'straight'];
+type FlowNode = RFNode<AscData>;
+type FlowEdge = RFEdge;
 
-function TopBar({
+function EdgeTypePanel({
     edgeType,
     setType,
 }: {
     edgeType: EdgeKind;
     setType: (t: EdgeKind) => void;
 }) {
-    const interactive = useStore(
+    const isInteractive = useStore(
         (s) => s.nodesDraggable && s.nodesConnectable && s.elementsSelectable
     );
-    if (!interactive) return null;
+
+    if (!isInteractive) return null;
+
     return (
-        <div
-            style={{
-                position: 'absolute',
-                zIndex: 5,
-                top: 8,
-                left: 8,
-                display: 'flex',
-                gap: 8,
-                background: '#fff',
-                padding: '6px 8px',
-                borderRadius: 8,
-                boxShadow: '0 1px 6px rgba(0,0,0,0.12)',
-            }}
-        >
-            {TYPES.map((t) => (
-                <button
-                    key={t}
-                    onClick={() => setType(t)}
-                    style={{
-                        padding: '6px 10px',
-                        borderRadius: 8,
-                        border: '1px solid #e5e7eb',
-                        background: edgeType === t ? '#e5f0ff' : '#fff',
-                        cursor: 'pointer',
-                    }}
-                    title={`Nuevo edge: ${t}`}
-                >
-                    {t}
-                </button>
-            ))}
-        </div>
+        <Panel position="top-right">
+            <div
+                style={{
+                    display: 'flex',
+                    gap: 6,
+                    padding: 4,
+                    background: 'rgba(255,255,255,0.9)',
+                    borderRadius: 8,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+                }}
+            >
+                {(
+                    ['smoothstep', 'bezier', 'step', 'straight'] as EdgeKind[]
+                ).map((t) => (
+                    <button
+                        key={t}
+                        onClick={() => setType(t)}
+                        className="btn btn-ghost btn-small"
+                        style={{
+                            fontSize: 11,
+                            padding: '4px 8px',
+                            border:
+                                edgeType === t
+                                    ? '1px solid #2563eb'
+                                    : '1px solid #e5e7eb',
+                            background: edgeType === t ? '#e5f0ff' : '#ffffff',
+                        }}
+                    >
+                        {t}
+                    </button>
+                ))}
+            </div>
+        </Panel>
     );
 }
 
 export default function FlowPlayground() {
-    const [nodes, , onNodesChange] = useNodesState<RFNode>(DEMO_NODES);
-    const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>(DEMO_EDGES);
-    const [edgeType, setType] = React.useState<EdgeKind>('smoothstep');
+    const allSchemas: FlowSchema[] = React.useMemo(
+        () => Object.values(FLOW_SCHEMAS),
+        []
+    );
 
-    const [layoutEpoch, setLayoutEpoch] = React.useState(1);
-    const bumpEpoch = React.useCallback(() => setLayoutEpoch((e) => e + 1), []);
+    const initialId: FlowId | '' = (allSchemas[0] && allSchemas[0].id) || '';
+
+    const [currentId, setCurrentId] = React.useState<FlowId | ''>(initialId);
+    const currentSchema = currentId ? FLOW_SCHEMAS[currentId] : undefined;
+
+    const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(
+        currentSchema?.nodes ?? []
+    );
+    const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(
+        currentSchema?.edges ?? []
+    );
+    const [edgeType, setEdgeType] = React.useState<EdgeKind>('smoothstep');
 
     const getNodeData = React.useCallback(
-        (id: string) =>
-            nodes.find((x) => x.id === id)?.data as AscData | undefined,
+        (id: string): AscData | undefined => {
+            const n = nodes.find((x) => x.id === id);
+            return (n?.data as AscData) ?? undefined;
+        },
         [nodes]
     );
 
     const onConnect = React.useMemo(
         () => makeOnConnectWithColorSmart(edgeType, getNodeData)(setEdges),
-        [edgeType, setEdges, getNodeData]
+        [edgeType, getNodeData, setEdges]
     );
 
+    // Cuando cambias de esquema, resetea nodos y aristas
     React.useEffect(() => {
-        setEdges((prev) =>
-            prev.map((e) => {
-                const d = getNodeData(e.source);
-                const byHandle = d ? compileEdgeLabels(d) : {};
-                const S = (e.sourceHandle || '').toString().toUpperCase();
-                const next =
-                    byHandle[S] ||
-                    (typeof d?.edgeLabel === 'string'
-                        ? d.edgeLabel
-                        : undefined) ||
-                    undefined;
-                return next !== e.label ? { ...e, label: next } : e;
-            })
-        );
-        bumpEpoch();
-    }, [nodes, setEdges, getNodeData, bumpEpoch]);
-
-    React.useEffect(() => {
-        const rects = nodes.map(nodeRect);
-        setEdges((prev) =>
-            prev.map((e) => {
-                const curr = e.data as any;
-                const sameEpoch = curr?.layoutEpoch === layoutEpoch;
-                const sameRects =
-                    curr?.nodeRects &&
-                    curr.nodeRects.length === rects.length &&
-                    curr.nodeRects.every(
-                        (r: Box, i: number) =>
-                            r.l === rects[i].l &&
-                            r.t === rects[i].t &&
-                            r.r === rects[i].r &&
-                            r.b === rects[i].b
-                    );
-                if (sameEpoch && sameRects) return e;
-                return {
-                    ...e,
-                    data: { ...(curr || {}), layoutEpoch, nodeRects: rects },
-                };
-            })
-        );
-    }, [layoutEpoch, nodes, setEdges]);
+        if (!currentSchema) return;
+        setNodes(currentSchema.nodes);
+        setEdges(currentSchema.edges);
+    }, [currentId, currentSchema, setNodes, setEdges]);
 
     return (
-        <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
-                defaultEdgeOptions={defaultEdgeOptions}
-                connectionLineComponent={connectionLineComponent}
-                onNodesChange={onNodesChange}
-                onNodeDragStop={() => bumpEpoch()}
-                onEdgesChange={(cs) => {
-                    onEdgesChange(cs);
-                    const removed =
-                        Array.isArray(cs) &&
-                        cs.some((c: any) => c.type?.includes('remove'));
-                    if (removed) bumpEpoch();
+        <div
+            className="container"
+            style={{ paddingTop: 16, paddingBottom: 16 }}
+        >
+            <div
+                className="card"
+                style={{
+                    marginBottom: 16,
+                    padding: 12,
+                    display: 'flex',
+                    gap: 12,
                 }}
-                onConnect={(c) => {
-                    onConnect(c);
-                    bumpEpoch();
-                }}
-                fitView
-                minZoom={0.2}
             >
-                {/* Barra superior dependiente del candado nativo */}
-                <TopBar edgeType={edgeType} setType={setType} />
+                <div style={{ flex: 1 }}>
+                    <label
+                        htmlFor="flow-select"
+                        style={{ display: 'block', marginBottom: 4 }}
+                    >
+                        Seleccione esquema (flowId)
+                    </label>
+                    <select
+                        id="flow-select"
+                        value={currentId}
+                        onChange={(e) => setCurrentId(e.target.value as FlowId)}
+                        style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            borderRadius: 6,
+                            border: '1px solid #d0d7de',
+                        }}
+                    >
+                        {allSchemas.map((s) => (
+                            <option key={s.id} value={s.id}>
+                                {s.id} — {s.title}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
 
-                <Controls position="bottom-right" />
-                <Background />
-            </ReactFlow>
+            <div
+                className="card"
+                style={{
+                    height: 'min(620px, 80vh)',
+                    padding: 0,
+                    overflow: 'hidden',
+                }}
+            >
+                {currentSchema ? (
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        nodeTypes={nodeTypes}
+                        defaultEdgeOptions={defaultEdgeOptions}
+                        connectionLineComponent={connectionLineComponent}
+                        fitView
+                    >
+                        <Background />
+
+                        {/* Controles: candado + zoom (aquí es dev, puedes dejar zoom activo si quieres) */}
+                        <Controls
+                            showZoom={true}
+                            showFitView={true}
+                            showInteractive={true}
+                        />
+
+                        <EdgeTypePanel
+                            edgeType={edgeType}
+                            setType={setEdgeType}
+                        />
+                    </ReactFlow>
+                ) : (
+                    <div
+                        style={{
+                            padding: 16,
+                            fontSize: 14,
+                            color: '#6e7781',
+                        }}
+                    >
+                        No hay esquemas registrados en FLOW_SCHEMAS.
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

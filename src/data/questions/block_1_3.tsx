@@ -31,6 +31,7 @@ const block_1_3: Question[] = [
                 text: 'Es incorrecta porque reproduce información que puede localizarse literalmente en la lectura; no requiere razonamiento adicional.',
             },
         },
+        flowId: 'q_1',
     },
     {
         id: 2,
@@ -62,6 +63,7 @@ const block_1_3: Question[] = [
                 text: 'Es correcta porque pide elaborar una lista sobre la base del texto, es decir, exige rastrear datos explícitos y organizarlos. No agrega opiniones ni crea contenido nuevo.',
             },
         },
+        flowId: 'q_2',
     },
     {
         id: 3,
@@ -96,6 +98,7 @@ const block_1_3: Question[] = [
                 text: 'Es incorrecta porque mezcla una pregunta adecuada con otra que pide opinión (“lo que más te llamó la atención”), lo que no ayuda a delimitar el tema.',
             },
         },
+        flowId: 'q_3',
     },
 ];
 

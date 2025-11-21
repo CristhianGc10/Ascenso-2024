@@ -11,7 +11,7 @@ import {
 
 import AuthModal from './components/AuthModal';
 import CoverPage from './pages/CoverPage';
-import FlowPlayground from './pages/FlowPlayground';
+//import FlowPlayground from './pages/FlowPlayground';
 import HistoryPage from './pages/HistoryPage';
 import type { OptionKey } from './data/questions';
 import QuizPage from './pages/QuizPage';
@@ -237,7 +237,7 @@ export default function App() {
         return clearTimer;
     }, [stage, idx, order, answers, readOnly, timedOut, total]);
 
-    return <FlowPlayground />;
+    //return <FlowPlayground />;
 
     if (stage === 'cover') {
         const isSignedIn = !!session;

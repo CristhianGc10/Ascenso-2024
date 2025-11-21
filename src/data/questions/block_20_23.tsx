@@ -39,6 +39,7 @@ const block_20_23: Question[] = [
                 text: 'Es incorrecta porque no aplica lo aprendido a un nuevo contexto; la revisión ocurre en el mismo tema.',
             },
         },
+        flowId: 'q_20',
     },
 
     {

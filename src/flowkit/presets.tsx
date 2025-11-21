@@ -13,7 +13,7 @@ const i1 = makeInputNode(
         edgeLabelSides: { bottom: ['', '', 'es un proceso que'] },
     }
 );
-i1.style = { width: 180 }
+i1.style = { width: 180 };
 
 const i2 = makeInputNode(
     'i2',
@@ -58,10 +58,10 @@ const d3 = makeDefaultNode(
     'd3',
     { x: 800, y: 500 },
     {
-        content: ('aashd sdhsjah dsk dshd shd'),
+        content: 'aashd sdhsjah dsk dshd shd',
     }
 );
-d3.style = {widows: 150}
+d3.style = { widows: 150 };
 
 const d4 = makeDefaultNode(
     'd4',
@@ -136,6 +136,49 @@ const o3 = makeOutputNode(
 );
 o3.style = { width: 150 };
 
+const imgNode = makeDefaultNode(
+    'img1',
+    { x: 500, y: 300 },
+    {
+        content: (
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                }}
+            >
+                <img
+                    src="/images/Paleta.png"
+                    alt="Nodo ejemplo"
+                    style={{
+                        width: '100%',
+                        height: 'auto',
+                        borderRadius: 8,
+                        objectFit: 'cover',
+                    }}
+                />
+            </div>
+        ),
+        textAlign: 'center',
+    }
+);
+
+// Tamaño del nodo en el lienzo
+imgNode.style = { width: 220, height: 160 };
+
 // Exporta solo nodos; conecta en el lienzo
-export const DEMO_NODES: RFNode[] = [i1, i2, d1, d2, d3, d4, o1, o2, o3];
+export const DEMO_NODES: RFNode[] = [
+    i1,
+    i2,
+    d1,
+    d2,
+    d3,
+    d4,
+    o1,
+    o2,
+    o3,
+    imgNode,
+];
 export const DEMO_EDGES: RFEdge[] = [];

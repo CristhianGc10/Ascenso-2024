@@ -1,20 +1,10 @@
 // src/components/QuestionCard.tsx
 
-import '@xyflow/react/dist/style.css';
-
 import type { OptionKey, Question } from '../data/questions';
-import type { Edge as RFEdge, Node as RFNode } from '@xyflow/react';
-import { ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
-import {
-    connectionLineComponent,
-    defaultEdgeOptions,
-    nodeTypes,
-} from '../flowkit';
 
 import React from 'react';
 import StemWindow from './StemWindow';
 import type { StemsMap } from '../data/stems';
-import { getFlow } from '../flows';
 
 type Props = {
     q: Question;
@@ -22,6 +12,8 @@ type Props = {
     order: number;
     selected: OptionKey | null;
     onSelect: (k: OptionKey) => void;
+    // NUEVO: callback opcional para abrir el esquema (FlowModal)
+    onOpenFlow?: () => void;
 };
 
 function Sep() {
@@ -46,41 +38,19 @@ export default function QuestionCard({
     order,
     selected,
     onSelect,
+    onOpenFlow,
 }: Props) {
     const [openStem, setOpenStem] = React.useState(false);
     const [showExpl, setShowExpl] = React.useState(false);
-    const [openFlow, setOpenFlow] = React.useState(false);
 
     const hasSharedStem = !!q.stemBlockId;
     const stemNode = hasSharedStem ? stems[q.stemBlockId!] : q.stem;
 
-    // flowId por pregunta o por grupo; fallback
-    const flowId: string =
-        (q as any).flowId ??
-        (q.stemBlockId === '1-3'
-            ? 'grp-1-3'
-            : q.stemBlockId === '4-7'
-            ? 'grp-4-7'
-            : 'single-analisis');
-
-    const flowDef = getFlow(flowId);
-    const initialNodes: RFNode[] = flowDef?.nodes ?? [];
-    const initialEdges: RFEdge[] = flowDef?.edges ?? [];
-
-    // IMPORTANTE: el genérico es RFNode/RFEdge, no RFNode[]/RFEdge[]
-    const [flowNodes, setFlowNodes, onFlowNodesChange] =
-        useNodesState<RFNode>(initialNodes);
-    const [flowEdges, setFlowEdges, onFlowEdgesChange] =
-        useEdgesState<RFEdge>(initialEdges);
-
     React.useEffect(() => {
-        setShowExpl(false);
+        // cuando cambia de pregunta, cerramos enunciado y explicación
         setOpenStem(false);
-        setOpenFlow(false);
-        setFlowNodes(initialNodes);
-        setFlowEdges(initialEdges);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q.id, flowId]);
+        setShowExpl(false);
+    }, [q.id]);
 
     const onPick = (k: OptionKey) => onSelect(k);
 
@@ -206,14 +176,16 @@ export default function QuestionCard({
                     {showExpl ? 'Ocultar explicación' : 'Ver explicación'}
                 </button>
 
-                <button
-                    className="btn btn-ghost"
-                    onClick={() => setOpenFlow(true)}
-                    aria-label="Abrir esquema"
-                    title="Abrir esquema"
-                >
-                    Ver esquema
-                </button>
+                {onOpenFlow && (
+                    <button
+                        className="btn btn-ghost"
+                        onClick={onOpenFlow}
+                        aria-label="Abrir esquema"
+                        title="Abrir esquema"
+                    >
+                        Ver esquema
+                    </button>
+                )}
             </div>
 
             {hasSharedStem && (
@@ -253,33 +225,10 @@ export default function QuestionCard({
                     isOpen={openStem}
                     onClose={() => setOpenStem(false)}
                     width="min(900px, 95vw)"
-                    height={880}
+                    height={640}
                     maxHeight={880}
                 />
             )}
-
-            <StemWindow
-                title={flowDef?.title ?? 'Esquema'}
-                content={
-                    <div style={{ width: 'min(900px, 95vw)', height: 520 }}>
-                        <ReactFlow
-                            nodes={flowNodes}
-                            edges={flowEdges}
-                            onNodesChange={onFlowNodesChange}
-                            onEdgesChange={onFlowEdgesChange}
-                            nodeTypes={nodeTypes}
-                            defaultEdgeOptions={defaultEdgeOptions}
-                            connectionLineComponent={connectionLineComponent}
-                            fitView
-                        ></ReactFlow>
-                    </div>
-                }
-                isOpen={openFlow}
-                onClose={() => setOpenFlow(false)}
-                width="min(980px, 96vw)"
-                height={600}
-                maxHeight={600}
-            />
         </article>
     );
 }

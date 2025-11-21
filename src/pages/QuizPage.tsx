@@ -1,5 +1,9 @@
+// src/pages/QuizPage.tsx
+
 import type { OptionKey, Question } from '../data/questions';
 
+import type { FlowId } from '../data/flows';
+import FlowModal from '../components/FlowModal';
 import Pager from '../components/Pager';
 import QuestionCard from '../components/QuestionCard';
 import QuickNavModal from '../components/QuickNavModal';
@@ -14,7 +18,7 @@ type Props = {
     questions: Question[];
     answers: Record<number, OptionKey | null>;
     onSelect: (k: OptionKey) => void;
-    onFinish: () => void; // ← se usará también en review
+    onFinish: () => void; // se usa también en review
     showQuickNav: boolean;
     setShowQuickNav: (v: boolean) => void;
 };
@@ -34,6 +38,9 @@ export default function QuizPage({
     const qid = order[idx];
     const q = questions.find((qq) => qq.id === qid)!;
     const total = order.length;
+
+    // Estado para el esquema (React Flow)
+    const [openFlowId, setOpenFlowId] = React.useState<FlowId | null>(null);
 
     React.useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -61,11 +68,11 @@ export default function QuizPage({
                 leftDisabled={idx === 0}
                 onPrev={() => setIdx((i) => Math.max(0, i - 1))}
                 onNext={() => {
-                    if (isLast) onFinish(); // ← ahora también en review
+                    if (isLast) onFinish();
                     else setIdx((i) => Math.min(total - 1, i + 1));
                 }}
-                nextLabel={isLast ? 'Finalizar' : 'Siguiente'} // ← uniforme en quiz y review
-                enableLongPress={true} // long-press activo en ambos
+                nextLabel={isLast ? 'Finalizar' : 'Siguiente'}
+                enableLongPress={true}
                 onLongPress={() => setShowQuickNav(true)}
                 longPressMs={1500}
             />
@@ -76,10 +83,16 @@ export default function QuizPage({
                 order={idx + 1}
                 selected={answers[q.id] ?? null}
                 onSelect={onSelect}
+                // NUEVO: abrir esquema si la pregunta tiene flowId
+                onOpenFlow={
+                    q.flowId
+                        ? () => setOpenFlowId(q.flowId as FlowId)
+                        : undefined
+                }
             />
 
             <QuickNavModal
-                open={showQuickNav} // ← también en review
+                open={showQuickNav}
                 onClose={() => setShowQuickNav(false)}
                 currentIdx={idx}
                 order={order}
@@ -88,6 +101,12 @@ export default function QuizPage({
                     setIdx(() => target);
                     setShowQuickNav(false);
                 }}
+            />
+
+            <FlowModal
+                open={openFlowId !== null}
+                onClose={() => setOpenFlowId(null)}
+                flowId={openFlowId}
             />
         </div>
     );

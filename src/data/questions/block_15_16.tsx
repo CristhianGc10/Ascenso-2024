@@ -54,6 +54,7 @@ const block_15_16: Question[] = [
                 text: 'Es correcta porque la opción elegida expresa una conclusión que no aparece textual: explica un comportamiento de los personajes a partir de consecuencias previsibles, no copiando líneas del cuento.',
             },
         },
+        flowId: 'q_15',
     },
     {
         id: 16,
@@ -90,6 +91,7 @@ const block_15_16: Question[] = [
                 text: 'Es incorrecta porque plantear “cuestionarse” sus conocimientos busca producir choque entre lo que cree y la evidencia, que es otro proceso (conflicto cognitivo).',
             },
         },
+        flowId: 'q_16',
     },
 ];
 

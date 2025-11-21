@@ -6,66 +6,111 @@ import {
     useEdgesState,
     type Node as RFNode,
     type Edge as RFEdge,
+    Background,
+    Controls,
+    Panel,
+    useStore,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+
 import {
     nodeTypes,
     defaultEdgeOptions,
     connectionLineComponent,
 } from '../flowkit';
-import {
-    makeInputNode,
-    makeDefaultNode,
-    makeOutputNode,
-    makeOnConnectWithColor,
-} from '../flowkit/molds';
+
+import { FLOW_SCHEMAS } from '../data/flows';
+import type { FlowId } from '../data/flows';
+import type { AscData } from '../flowkit/AscNodes';
+import { makeOnConnectWithColorSmart } from '../flowkit/molds';
 
 type EdgeKind = 'smoothstep' | 'bezier' | 'step' | 'straight';
+
+type FlowNode = RFNode<AscData>;
+type FlowEdge = RFEdge;
 
 type Props = {
     open: boolean;
     onClose: () => void;
-    title?: string;
-    nodes?: RFNode[];
-    edges?: RFEdge[];
+    flowId: FlowId | null;
 };
 
-const defaultNodes: RFNode[] = [
-    makeInputNode(
-        'in',
-        { x: 0, y: 0 },
-        { content: 'Idea A', edgeLabel: 'conduce a' }
-    ),
-    makeDefaultNode('mid', { x: 420, y: 80 }, { label: 'Idea B' }),
-    makeOutputNode('out', { x: 860, y: 0 }, { label: 'Idea C' }),
-];
+/**
+ * Panel interno para elegir el tipo de arista.
+ * Se oculta automáticamente cuando el candado (interactivo) está cerrado.
+ */
+function EdgeTypePanel({
+    edgeType,
+    setType,
+}: {
+    edgeType: EdgeKind;
+    setType: (t: EdgeKind) => void;
+}) {
+    // Interactivo = nodos arrastrables, conectables y seleccionables
+    const isInteractive = useStore(
+        (s) => s.nodesDraggable && s.nodesConnectable && s.elementsSelectable
+    );
 
-const defaultEdges: RFEdge[] = [];
+    if (!isInteractive) return null;
 
-export default function FlowModal({
-    open,
-    onClose,
-    title = 'Esquema',
-    nodes = defaultNodes,
-    edges = defaultEdges,
-}: Props) {
-    const [nf, , onN] = useNodesState<RFNode>(nodes);
-    const [ef, setE, onE] = useEdgesState<RFEdge>(edges);
+    return (
+        <Panel position="top-right">
+            <div
+                style={{
+                    display: 'flex',
+                    gap: 6,
+                    padding: 4,
+                    background: 'rgba(255,255,255,0.9)',
+                    borderRadius: 8,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+                }}
+            >
+                {(
+                    ['smoothstep', 'bezier', 'step', 'straight'] as EdgeKind[]
+                ).map((t) => (
+                    <button
+                        key={t}
+                        onClick={() => setType(t)}
+                        className="btn btn-ghost btn-small"
+                        style={{
+                            fontSize: 11,
+                            padding: '4px 8px',
+                            border:
+                                edgeType === t
+                                    ? '1px solid #2563eb'
+                                    : '1px solid #e5e7eb',
+                            background: edgeType === t ? '#e5f0ff' : '#ffffff',
+                        }}
+                    >
+                        {t}
+                    </button>
+                ))}
+            </div>
+        </Panel>
+    );
+}
+
+export default function FlowModal({ open, onClose, flowId }: Props) {
+    if (!open || !flowId) return null;
+
+    const schema = FLOW_SCHEMAS[flowId];
+    if (!schema) return null;
+
+    const [nf, , onN] = useNodesState<FlowNode>(schema.nodes);
+    const [ef, setE, onE] = useEdgesState<FlowEdge>(schema.edges);
     const [edgeType, setType] = React.useState<EdgeKind>('smoothstep');
 
-    // usa solo data.edgeLabel del nodo source
-    const getNodeLabel = React.useCallback(
-        (id: string) => {
+    const getNodeData = React.useCallback(
+        (id: string): AscData | undefined => {
             const n = nf.find((x) => x.id === id);
-            const d = n?.data as any;
-            return typeof d?.edgeLabel === 'string' ? d.edgeLabel : undefined;
+            return (n?.data as AscData) ?? undefined;
         },
         [nf]
     );
 
     const onConnect = React.useMemo(
-        () => makeOnConnectWithColor(edgeType, getNodeLabel)(setE),
-        [edgeType, setE, getNodeLabel]
+        () => makeOnConnectWithColorSmart(edgeType, getNodeData)(setE),
+        [edgeType, getNodeData, setE]
     );
 
     React.useEffect(() => {
@@ -76,19 +121,6 @@ export default function FlowModal({
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, [open, onClose]);
-
-    // reetiquetar si cambian edgeLabel en nodos
-    React.useEffect(() => {
-        setE((prev) =>
-            prev.map((e) => {
-                const newLabel =
-                    (getNodeLabel(e.source) || '').trim() || undefined;
-                return newLabel !== e.label ? { ...e, label: newLabel } : e;
-            })
-        );
-    }, [nf, setE, getNodeLabel]);
-
-    if (!open) return null;
 
     return (
         <div
@@ -119,58 +151,30 @@ export default function FlowModal({
                     overflow: 'hidden',
                 }}
             >
+                {/* Header: título + X del proyecto */}
                 <header
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 8,
                         justifyContent: 'space-between',
                         padding: '12px 16px',
                         borderBottom: '1px solid #e5e7eb',
                     }}
                 >
                     <h2 id="flow-title" style={{ margin: 0, fontSize: 16 }}>
-                        {title}
+                        {schema.title}
                     </h2>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        {(
-                            [
-                                'smoothstep',
-                                'bezier',
-                                'step',
-                                'straight',
-                            ] as EdgeKind[]
-                        ).map((t) => (
-                            <button
-                                key={t}
-                                onClick={() => setType(t)}
-                                style={{
-                                    padding: '6px 10px',
-                                    borderRadius: 8,
-                                    border: '1px solid #e5e7eb',
-                                    background:
-                                        edgeType === t ? '#e5f0ff' : '#fff',
-                                }}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
                     <button
+                        className="btn btn-ghost btn-small btn-icon"
                         onClick={onClose}
-                        aria-label="Cerrar"
-                        style={{
-                            border: '1px solid #e5e7eb',
-                            background: 'white',
-                            padding: '6px 10px',
-                            borderRadius: 8,
-                            cursor: 'pointer',
-                        }}
+                        aria-label="Cerrar esquema"
+                        title="Cerrar esquema"
                     >
-                        Cerrar
+                        ✕
                     </button>
                 </header>
 
+                {/* Zona del diagrama */}
                 <div style={{ flex: 1 }}>
                     <ReactFlow
                         nodes={nf}
@@ -182,7 +186,20 @@ export default function FlowModal({
                         defaultEdgeOptions={defaultEdgeOptions}
                         connectionLineComponent={connectionLineComponent}
                         fitView
-                    />
+                    >
+                        <Background />
+
+                        {/* Candadito: sin zoom +/– ni fit view */}
+                        <Controls
+                            showZoom={false}
+                            showFitView={false}
+                            showInteractive={true}
+                        />
+
+                        {/* Botones de tipo de arista dentro del canvas,
+                            que desaparecen cuando el candado está cerrado */}
+                        <EdgeTypePanel edgeType={edgeType} setType={setType} />
+                    </ReactFlow>
                 </div>
             </div>
         </div>
